@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+instance/
+finance.db
+*.log
+.system_generated/

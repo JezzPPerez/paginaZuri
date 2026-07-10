@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanzasPro - Dashboard de Control de Dinero</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navbar -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <h1>Finanzas<span>Pro</span></h1>
+            </div>
+            <nav class="app-nav">
+                <button class="nav-btn active" data-tab="tab-dashboard" id="btn-tab-dashboard">
+                    <i class="fa-solid fa-chart-pie"></i> Dashboard
+                </button>
+                <button class="nav-btn" data-tab="tab-transactions" id="btn-tab-transactions">
+                    <i class="fa-solid fa-list-check"></i> Transacciones
+                </button>
+                <button class="nav-btn" data-tab="tab-recurring" id="btn-tab-recurring">
+                    <i class="fa-solid fa-calendar-days"></i> Servicios & Suscripciones
+                </button>
+            </nav>
+            <div class="header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
+                <span class="user-badge"><i class="fa-solid fa-circle-user"></i> {{ username }}</span>
+                <a href="/logout" class="btn btn-secondary-sm" id="btn-logout" style="color: var(--danger); border-color: rgba(239, 68, 68, 0.2); background: var(--danger-bg); display: flex; align-items: center; gap: 0.35rem; text-decoration: none;" title="Cerrar sesión">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Salir
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content Wrapper -->
+        <main class="app-content">
+            
+            <!-- SECTION 1: DASHBOARD -->
+            <section id="tab-dashboard" class="tab-pane active">
+                <div class="dashboard-grid">
+                    
+                    <!-- KPI Cards Row -->
+                    <div class="kpi-cards">
+                        <div class="card kpi-card total-balance">
+                            <div class="card-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                                <i class="fa-solid fa-scale-balanced"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Saldo Disponible</span>
+                                <h3 class="kpi-value" id="kpi-net-balance">$0.00</h3>
+                                <span class="kpi-trend" id="kpi-net-trend">Ingresos netos totales</span>
+                            </div>
+                        </div>
+
+                        <div class="card kpi-card total-income">
+                            <div class="card-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                                <i class="fa-solid fa-arrow-trend-up"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Ingresos Totales</span>
+                                <h3 class="kpi-value" id="kpi-total-income">$0.00</h3>
+                                <span class="kpi-subtext">Histórico acumulado</span>
+                            </div>
+                        </div>
+
+                        <div class="card kpi-card total-expenses">
+                            <div class="card-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                                <i class="fa-solid fa-arrow-trend-down"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Egresos Totales</span>
+                                <h3 class="kpi-value" id="kpi-total-expenses">$0.00</h3>
+                                <span class="kpi-subtext">Histórico acumulado</span>
+                            </div>
+                        </div>
+
+                        <div class="card kpi-card weekend-expenses">
+                            <div class="card-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                                <i class="fa-solid fa-beer-mug-empty"></i>
+                            </div>
+                            <div class="kpi-info">
+                                <span class="kpi-label">Gastos Fin de Semana</span>
+                                <h3 class="kpi-value text-warning" id="kpi-weekend-expenses">$0.00</h3>
+                                <span class="kpi-subtext">Sábados y Domingos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Goals Panel & Cards detail -->
+                    <div class="dashboard-row-2">
+                        <!-- Goal Setup / Tracking Card -->
+                        <div class="card goal-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-bullseye icon-blue"></i> Meta de la Semana Actual</h3>
+                                <button class="btn btn-secondary-sm" id="btn-edit-goal"><i class="fa-solid fa-pen-to-square"></i> Ajustar Meta</button>
+                            </div>
+                            <div class="goal-body">
+                                <div class="goal-item">
+                                    <div class="goal-item-header">
+                                        <span>Meta de Ingresos Semanal</span>
+                                        <span class="goal-ratio" id="lbl-goal-income-progress">$0 / $0</span>
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar" id="bar-goal-income" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="goal-item mt-4">
+                                    <div class="goal-item-header">
+                                        <span>Meta de Ahorro Semanal</span>
+                                        <span class="goal-ratio" id="lbl-goal-savings-progress">$0 / $0</span>
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar bg-success" id="bar-goal-savings" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="goal-tips mt-4">
+                                    <p class="text-muted"><i class="fa-solid fa-circle-info"></i> El progreso semanal se calcula automáticamente en base a las transacciones de esta semana (lunes a domingo).</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card/Debit Credit Distribution -->
+                        <div class="card cards-stats-card">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-credit-card icon-blue"></i> Egresos por Método de Pago</h3>
+                            </div>
+                            <div class="payment-methods-progress">
+                                <div class="method-row">
+                                    <div class="method-label">
+                                        <span><i class="fa-solid fa-credit-card"></i> Tarjeta de Crédito</span>
+                                        <strong id="val-credit-expenses">$0.00</strong>
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar bg-credit" id="bar-credit-expenses" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="method-row mt-4">
+                                    <div class="method-label">
+                                        <span><i class="fa-solid fa-money-check-dollar"></i> Tarjeta de Débito</span>
+                                        <strong id="val-debit-expenses">$0.00</strong>
+                                    </div>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar bg-debit" id="bar-debit-expenses" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="dashboard-row-3">
+                        <div class="card chart-card flex-2">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-chart-line icon-blue"></i> Distribución de Gastos por Categoría</h3>
+                            </div>
+                            <div class="chart-container doughnut-container">
+                                <canvas id="chart-categories"></canvas>
+                            </div>
+                        </div>
+                        
+                        <div class="card list-quick-actions flex-1">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-bolt icon-blue"></i> Accesos Rápidos</h3>
+                            </div>
+                            <div class="quick-actions-grid">
+                                <button class="btn btn-action" id="quick-add-income">
+                                    <i class="fa-solid fa-circle-plus icon-success"></i>
+                                    <span>Agregar Ingreso</span>
+                                </button>
+                                <button class="btn btn-action" id="quick-add-expense">
+                                    <i class="fa-solid fa-circle-minus icon-danger"></i>
+                                    <span>Agregar Egreso</span>
+                                </button>
+                                <button class="btn btn-action" id="quick-add-service">
+                                    <i class="fa-solid fa-calendar-plus icon-warning"></i>
+                                    <span>Programar Servicio</span>
+                                </button>
+                            </div>
+                            <div class="recent-status-box">
+                                <h4>Resumen Diario</h4>
+                                <p id="daily-status-text">Cargando información...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: TRANSACTIONS -->
+            <section id="tab-transactions" class="tab-pane">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-receipt"></i> Historial de Transacciones</h2>
+                    <button class="btn btn-primary" id="btn-add-transaction">
+                        <i class="fa-solid fa-plus"></i> Nueva Transacción
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="card filter-card">
+                    <div class="filter-grid">
+                        <div class="filter-group">
+                            <label for="filter-type">Tipo</label>
+                            <select id="filter-type">
+                                <option value="">Todos</option>
+                                <option value="income">Ingresos</option>
+                                <option value="expense">Egresos</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="filter-category">Categoría</label>
+                            <select id="filter-category">
+                                <option value="">Todas</option>
+                                <option value="Trabajo / Inversión">Trabajo / Inversión</option>
+                                <option value="Gasto Hormiga">Gasto Hormiga</option>
+                                <option value="Suscripción">Suscripción</option>
+                                <option value="Servicio">Servicio</option>
+                                <option value="Fin de Semana">Fin de Semana</option>
+                                <option value="Ahorro">Ahorro</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                        </div>
+                        <div class="filter-group button-group">
+                            <button class="btn btn-secondary" id="btn-clear-filters">Limpiar Filtros</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transactions Table -->
+                <div class="card table-card">
+                    <div class="table-responsive">
+                        <table class="data-table" id="table-transactions">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Descripción</th>
+                                    <th>Categoría</th>
+                                    <th>Método de Pago</th>
+                                    <th>Tipo</th>
+                                    <th class="text-right">Monto</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-list">
+                                <!-- Dynamic transactions load here -->
+                                <tr>
+                                    <td colspan="7" class="text-center">Cargando transacciones...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: RECURRING SERVICES -->
+            <section id="tab-recurring" class="tab-pane">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-calendar-check"></i> Servicios y Suscripciones Recurrentes</h2>
+                    <button class="btn btn-primary" id="btn-add-recurring">
+                        <i class="fa-solid fa-calendar-plus"></i> Registrar Servicio
+                    </button>
+                </div>
+
+                <div class="recurring-layout">
+                    <!-- Scheduled payments list -->
+                    <div class="card flex-2">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-clock-rotate-left icon-blue"></i> Próximos Pagos Programados</h3>
+                        </div>
+                        <div class="recurring-services-grid" id="recurring-list">
+                            <!-- Dynamic list -->
+                            <p class="text-center py-4">Cargando servicios...</p>
+                        </div>
+                    </div>
+
+                    <!-- Informational/Help sidebar -->
+                    <div class="card flex-1 guide-card">
+                        <h3><i class="fa-solid fa-lightbulb text-warning"></i> Control de Gastos Hormiga</h3>
+                        <p>Los gastos hormiga como las suscripciones (Netflix, Spotify, etc.) y servicios (luz, agua, internet) representan salidas de dinero constantes.</p>
+                        <div class="guide-stats">
+                            <div class="guide-stat-item">
+                                <span class="guide-label">Gasto Mensual Estimado</span>
+                                <h4 id="est-monthly-recurring">$0.00</h4>
+                            </div>
+                            <div class="guide-stat-item">
+                                <span class="guide-label">Servicios Registrados</span>
+                                <h4 id="count-recurring">0</h4>
+                            </div>
+                        </div>
+                        <div class="guide-tips-box mt-4">
+                            <h5>Consejos:</h5>
+                            <ul>
+                                <li>Revisa qué suscripciones no has usado en los últimos 30 días y cancélaslas.</li>
+                                <li>Registra tus servicios en esta agenda para prever el cobro y evitar recargos por pago tardío.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- App Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2026 FinanzasPro. Tu asistente de finanzas personales para crecimiento de patrimonio.</p>
+        </footer>
+    </div>
+
+    <!-- MODAL 1: ADD/EDIT TRANSACTION -->
+    <div class="modal" id="modal-transaction">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-transaction-title">Nueva Transacción</h3>
+                <button class="modal-close" id="btn-close-transaction-modal">&times;</button>
+            </div>
+            <form id="form-transaction">
+                <input type="hidden" id="tx-id">
+                <div class="form-group">
+                    <label for="tx-date">Fecha</label>
+                    <input type="date" id="tx-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="tx-description">Descripción</label>
+                    <input type="text" id="tx-description" placeholder="Ej. Pago de Nómina, Café, Supermercado" required>
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group flex-1">
+                        <label for="tx-amount">Monto ($)</label>
+                        <input type="number" step="0.01" id="tx-amount" min="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="tx-type">Tipo</label>
+                        <select id="tx-type" required>
+                            <option value="expense">Egreso (Gasto)</option>
+                            <option value="income">Ingreso (Ganancia)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group flex-1">
+                        <label for="tx-category">Categoría</label>
+                        <select id="tx-category" required>
+                            <option value="Trabajo / Inversión">Trabajo / Inversión</option>
+                            <option value="Gasto Hormiga">Gasto Hormiga</option>
+                            <option value="Suscripción">Suscripción</option>
+                            <option value="Servicio">Servicio</option>
+                            <option value="Fin de Semana">Fin de Semana</option>
+                            <option value="Ahorro">Ahorro</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="tx-method">Método de Pago</label>
+                        <select id="tx-method" required>
+                            <option value="Débito">Tarjeta de Débito</option>
+                            <option value="Crédito">Tarjeta de Crédito</option>
+                            <option value="Efectivo">Efectivo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-transaction-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-transaction">Guardar Transacción</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ADD/EDIT RECURRING SERVICE -->
+    <div class="modal" id="modal-recurring">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-recurring-title">Registrar Servicio Recurrente</h3>
+                <button class="modal-close" id="btn-close-recurring-modal">&times;</button>
+            </div>
+            <form id="form-recurring">
+                <input type="hidden" id="rec-id">
+                <div class="form-group">
+                    <label for="rec-name">Nombre del Servicio</label>
+                    <input type="text" id="rec-name" placeholder="Ej. Netflix, Telmex, CFE" required>
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group flex-1">
+                        <label for="rec-amount">Monto de Cobro ($)</label>
+                        <input type="number" step="0.01" id="rec-amount" min="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="rec-frequency">Frecuencia</label>
+                        <select id="rec-frequency" required>
+                            <option value="Semanal">Semanal</option>
+                            <option value="Mensual" selected>Mensual</option>
+                            <option value="Anual">Anual</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group-row">
+                    <div class="form-group flex-1">
+                        <label for="rec-date">Próxima Fecha de Cobro</label>
+                        <input type="date" id="rec-date" required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label for="rec-category">Categoría</label>
+                        <select id="rec-category" required>
+                            <option value="Suscripción">Suscripción</option>
+                            <option value="Servicio">Servicio</option>
+                            <option value="Trabajo / Inversión">Trabajo / Inversión</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="rec-method">Método de Pago Programado</label>
+                    <select id="rec-method" required>
+                        <option value="Débito">Tarjeta de Débito</option>
+                        <option value="Crédito">Tarjeta de Crédito</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-recurring-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-recurring">Guardar Servicio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: EDIT WEEKLY GOAL -->
+    <div class="modal" id="modal-goal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Metas de la Semana</h3>
+                <button class="modal-close" id="btn-close-goal-modal">&times;</button>
+            </div>
+            <form id="form-goal">
+                <input type="hidden" id="goal-week-start">
+                <p class="modal-info-text text-muted mb-4">Ingresa tus objetivos para la semana actual. Estos se compararán con tus transacciones de lunes a domingo.</p>
+                <div class="form-group">
+                    <label for="goal-income">Meta de Ingreso Semanal ($)</label>
+                    <input type="number" step="0.01" id="goal-income" placeholder="0.00" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="goal-savings">Meta de Ahorro Semanal ($)</label>
+                    <input type="number" step="0.01" id="goal-savings" placeholder="0.00" min="0" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-goal-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Metas</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
