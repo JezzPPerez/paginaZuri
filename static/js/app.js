@@ -255,7 +255,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         let colorClass = 'alert-green-blue';
                         let badgeText = '';
 
-                        // Cambios de color según urgencia
                         if (alert.days_left <= 2) {
                             colorClass = 'alert-red';
                             badgeText = alert.days_left === 0 ? '¡Paga Hoy!' : `¡Faltan ${alert.days_left} días!`;
@@ -295,7 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     statusMsg += 'No has definido una meta de ingresos para esta semana aún.';
                 }
                 
-                // Agregar recordatorio de deudas pendientes si las hay
                 const owedToMe = data.total_owed_to_me || 0;
                 const iOwe = data.total_i_owe || 0;
                 if (owedToMe > 0 || iOwe > 0) {
@@ -431,15 +429,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const amountClass = tx.type === 'income' ? 'badge-income' : 'badge-expense';
 
                     tr.innerHTML = `
-                        <td>${tx.date}</td>
-                        <td style="font-weight: 600;">${tx.description}</td>
-                        <td><span class="badge badge-category">${tx.category}</span></td>
-                        <td><span class="badge badge-method">${tx.payment_method}</span></td>
-                        <td><span class="badge ${badgeType}">${labelType}</span></td>
-                        <td class="text-right" style="font-weight: 700;">
+                        <td data-label="Fecha">${tx.date}</td>
+                        <td data-label="Descripción" style="font-weight: 600;">${tx.description}</td>
+                        <td data-label="Categoría"><span class="badge badge-category">${tx.category}</span></td>
+                        <td data-label="Método"><span class="badge badge-method">${tx.payment_method}</span></td>
+                        <td data-label="Tipo"><span class="badge ${badgeType}">${labelType}</span></td>
+                        <td data-label="Monto" class="text-right" style="font-weight: 700;">
                             <span class="${amountClass}">${amountSign} ${formatCurrency(tx.amount)}</span>
                         </td>
-                        <td class="text-center">
+                        <td data-label="Acciones" class="text-center">
                             <div class="action-buttons">
                                 <button class="btn-icon btn-edit" onclick="editTransaction(${tx.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
                                 <button class="btn-icon btn-delete" onclick="deleteTransaction(${tx.id})" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
@@ -575,12 +573,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         const checkTooltip = d.status === 'pending' ? 'Marcar como Pagado' : 'Marcar como Pendiente';
 
                         tr.innerHTML = `
-                            <td style="font-weight: 600;">${d.person_name}</td>
-                            <td>${d.description || '-'}</td>
-                            <td>${d.due_date || 'Sin fecha'}</td>
-                            <td class="text-right" style="font-weight: 700; color: var(--success);">${formatCurrency(d.amount)}</td>
-                            <td class="text-center"><span class="badge ${badgeStatusClass}">${labelStatus}</span></td>
-                            <td class="text-center">
+                            <td data-label="Persona" style="font-weight: 600;">${d.person_name}</td>
+                            <td data-label="Concepto">${d.description || '-'}</td>
+                            <td data-label="Vencimiento">${d.due_date || 'Sin fecha'}</td>
+                            <td data-label="Monto" class="text-right" style="font-weight: 700; color: var(--success);">${formatCurrency(d.amount)}</td>
+                            <td data-label="Estado" class="text-center"><span class="badge ${badgeStatusClass}">${labelStatus}</span></td>
+                            <td data-label="Acciones" class="text-center">
                                 <div class="action-buttons">
                                     <button class="btn-icon btn-edit" onclick="toggleDebtStatus(${d.id}, '${d.status}')" title="${checkTooltip}"><i class="fa-solid ${checkIcon}"></i></button>
                                     <button class="btn-icon btn-edit" onclick="editDebt(${d.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -593,7 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (borrowRows.length === 0) {
-                    borrowList.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No has registrado deudas pendientes.</td></tr>';
+                    borrowList.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No has registrado deudas de personas a las que debas.</td></tr>';
                 } else {
                     borrowRows.forEach(d => {
                         if (d.status === 'pending') {
@@ -612,12 +610,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         const checkTooltip = d.status === 'pending' ? 'Marcar como Pagado' : 'Marcar como Pendiente';
 
                         tr.innerHTML = `
-                            <td style="font-weight: 600;">${d.person_name}</td>
-                            <td>${d.description || '-'}</td>
-                            <td>${d.due_date || 'Sin fecha'}</td>
-                            <td class="text-right" style="font-weight: 700; color: var(--danger);">${formatCurrency(d.amount)}</td>
-                            <td class="text-center"><span class="badge ${badgeStatusClass}">${labelStatus}</span></td>
-                            <td class="text-center">
+                            <td data-label="A quién debo" style="font-weight: 600;">${d.person_name}</td>
+                            <td data-label="Concepto">${d.description || '-'}</td>
+                            <td data-label="Vencimiento">${d.due_date || 'Sin fecha'}</td>
+                            <td data-label="Monto" class="text-right" style="font-weight: 700; color: var(--danger);">${formatCurrency(d.amount)}</td>
+                            <td data-label="Estado" class="text-center"><span class="badge ${badgeStatusClass}">${labelStatus}</span></td>
+                            <td data-label="Acciones" class="text-center">
                                 <div class="action-buttons">
                                     <button class="btn-icon btn-edit" onclick="toggleDebtStatus(${d.id}, '${d.status}')" title="${checkTooltip}"><i class="fa-solid ${checkIcon}"></i></button>
                                     <button class="btn-icon btn-edit" onclick="editDebt(${d.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>

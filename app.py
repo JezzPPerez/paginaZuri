@@ -202,7 +202,7 @@ def login_2fa():
         otp_secret = session['temp_otp_secret']
         provisioning_uri = pyotp.totp.TOTP(otp_secret).provisioning_uri(
             name=user.username,
-            issuer_name="FinanzasPro"
+            issuer_name="Finanzas JZ"
         )
     else:
         otp_secret = user.otp_secret
