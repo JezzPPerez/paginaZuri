@@ -39,6 +39,7 @@ class User(db.Model):
     transactions = db.relationship('Transaction', backref='user', lazy=True, cascade="all, delete-orphan")
     recurring_services = db.relationship('RecurringService', backref='user', lazy=True, cascade="all, delete-orphan")
     weekly_goals = db.relationship('WeeklyGoal', backref='user', lazy=True, cascade="all, delete-orphan")
+    debts = db.relationship('Debt', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -112,6 +113,30 @@ class WeeklyGoal(db.Model):
             'week_start_date': self.week_start_date,
             'target_income': self.target_income,
             'target_savings': self.target_savings
+        }
+
+
+class Debt(db.Model):
+    __tablename__ = 'debts'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    person_name = db.Column(db.String(100), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    type = db.Column(db.String(10), nullable=False)  # 'lend' (me deben) o 'borrow' (debo)
+    description = db.Column(db.String(200), nullable=True)
+    due_date = db.Column(db.String(10), nullable=True)  # YYYY-MM-DD
+    status = db.Column(db.String(20), default='pending')  # 'pending' o 'paid'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'person_name': self.person_name,
+            'amount': self.amount,
+            'type': self.type,
+            'description': self.description,
+            'due_date': self.due_date,
+            'status': self.status
         }
 
 
@@ -404,7 +429,69 @@ def save_goal():
         return jsonify({'error': f'Falta el campo requerido: {str(e)}'}), 400
 
 
-# 4. Resumen Estadístico para el Dashboard
+# 4. Deudas y Préstamos
+@app.route('/api/debts', methods=['GET'])
+@login_required
+def get_debts():
+    debts = Debt.query.filter_by(user_id=session['user_id']).order_by(Debt.status.desc(), Debt.due_date.asc()).all()
+    return jsonify([d.to_dict() for d in debts])
+
+@app.route('/api/debts', methods=['POST'])
+@login_required
+def create_debt():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    try:
+        new_debt = Debt(
+            user_id=session['user_id'],
+            person_name=data['person_name'],
+            amount=float(data['amount']),
+            type=data['type'],
+            description=data.get('description', ''),
+            due_date=data.get('due_date', ''),
+            status=data.get('status', 'pending')
+        )
+        db.session.add(new_debt)
+        db.session.commit()
+        return jsonify(new_debt.to_dict()), 201
+    except KeyError as e:
+        return jsonify({'error': f'Falta el campo requerido: {str(e)}'}), 400
+    except ValueError:
+        return jsonify({'error': 'Monto inválido'}), 400
+
+@app.route('/api/debts/<int:id>', methods=['PUT'])
+@login_required
+def update_debt(id):
+    debt = Debt.query.filter_by(id=id, user_id=session['user_id']).first_or_404()
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    try:
+        debt.person_name = data.get('person_name', debt.person_name)
+        debt.amount = float(data.get('amount', debt.amount))
+        debt.type = data.get('type', debt.type)
+        debt.description = data.get('description', debt.description)
+        debt.due_date = data.get('due_date', debt.due_date)
+        debt.status = data.get('status', debt.status)
+        
+        db.session.commit()
+        return jsonify(debt.to_dict())
+    except ValueError:
+        return jsonify({'error': 'Monto inválido'}), 400
+
+@app.route('/api/debts/<int:id>', methods=['DELETE'])
+@login_required
+def delete_debt(id):
+    debt = Debt.query.filter_by(id=id, user_id=session['user_id']).first_or_404()
+    db.session.delete(debt)
+    db.session.commit()
+    return jsonify({'message': 'Deuda eliminada con éxito'})
+
+
+# 5. Resumen Estadístico para el Dashboard
 @app.route('/api/summary', methods=['GET'])
 @login_required
 def get_summary():
@@ -454,6 +541,34 @@ def get_summary():
     target_income = goal.target_income if goal else 0.0
     target_savings = goal.target_savings if goal else 0.0
     
+    # Cálculos de Deudas
+    debts = Debt.query.filter_by(user_id=u_id, status='pending').all()
+    total_owed_to_me = sum(d.amount for d in debts if d.type == 'lend')
+    total_i_owe = sum(d.amount for d in debts if d.type == 'borrow')
+    
+    # Alertas de Pagos Recurrentes (Próximos 10 días)
+    services = RecurringService.query.filter_by(user_id=u_id).all()
+    upcoming_alerts = []
+    today_date = datetime.now().date()
+    
+    for s in services:
+        try:
+            billing_date = datetime.strptime(s.next_billing_date, '%Y-%m-%d').date()
+            days_left = (billing_date - today_date).days
+            # Considerar cobros de hoy hasta dentro de 10 días
+            if 0 <= days_left <= 10:
+                upcoming_alerts.append({
+                    'name': s.name,
+                    'amount': s.amount,
+                    'next_billing_date': s.next_billing_date,
+                    'category': s.category,
+                    'days_left': days_left
+                })
+        except ValueError:
+            pass
+            
+    upcoming_alerts.sort(key=lambda x: x['days_left'])
+    
     return jsonify({
         'total_income': total_income,
         'total_expense': total_expense,
@@ -462,6 +577,9 @@ def get_summary():
         'credit_expenses': credit_expenses,
         'categories_breakdown': categories_breakdown,
         'weekend_expenses': weekend_expenses,
+        'total_owed_to_me': total_owed_to_me,
+        'total_i_owe': total_i_owe,
+        'upcoming_alerts': upcoming_alerts,
         'weekly_progress': {
             'week_start': monday_str,
             'week_end': sunday_str,

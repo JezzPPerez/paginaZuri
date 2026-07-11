@@ -997,3 +997,117 @@ body {
 .mt-4 { margin-top: 1rem; }
 .mb-4 { margin-bottom: 1rem; }
 .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+
+/* NOTIFICATION PANEL & ALERTS */
+.notification-panel-card {
+    padding: 1.25rem;
+    background-color: var(--bg-card);
+}
+
+.notification-alerts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.alert-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    transition: var(--transition);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.alert-service-name {
+    font-weight: 700;
+}
+
+.alert-service-details {
+    font-size: 0.75rem;
+}
+
+.alert-status-badge {
+    font-size: 0.725rem;
+    font-weight: 700;
+    padding: 0.25rem 0.625rem;
+    border-radius: 99px;
+    text-transform: uppercase;
+}
+
+/* Alert dynamic color themes */
+.alert-green-blue {
+    background-color: #f0f7ff;
+    border-left: 4px solid var(--accent-blue);
+    color: #1e3a8a;
+}
+.alert-green-blue .alert-status-badge {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.alert-yellow {
+    background-color: #fffbeb;
+    border-left: 4px solid var(--warning);
+    color: #78350f;
+    animation: alertPulseYellow 2s infinite ease-in-out;
+}
+.alert-yellow .alert-status-badge {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.alert-red {
+    background-color: #fef2f2;
+    border-left: 4px solid var(--danger);
+    color: #7f1d1d;
+    animation: alertPulseRed 1.5s infinite ease-in-out;
+}
+.alert-red .alert-status-badge {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+@keyframes alertPulseYellow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.1); }
+    50% { box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.25); }
+}
+
+@keyframes alertPulseRed {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.15); }
+    50% { box-shadow: 0 0 10px 3px rgba(239, 68, 68, 0.35); }
+}
+
+/* DEBTS & LOANS TAB LAYOUT */
+.debts-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.debts-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .debts-layout {
+        grid-template-columns: 1fr;
+    }
+}

@@ -11,16 +11,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalTx = document.getElementById('modal-transaction');
     const modalRec = document.getElementById('modal-recurring');
     const modalGoal = document.getElementById('modal-goal');
+    const modalDebt = document.getElementById('modal-debt');
 
     // Forms
     const formTx = document.getElementById('form-transaction');
     const formRec = document.getElementById('form-recurring');
     const formGoal = document.getElementById('form-goal');
+    const formDebt = document.getElementById('form-debt');
 
     // Buttons to Open Modals
     const btnAddTx = document.getElementById('btn-add-transaction');
     const btnAddRec = document.getElementById('btn-add-recurring');
     const btnEditGoal = document.getElementById('btn-edit-goal');
+    const btnAddDebt = document.getElementById('btn-add-debt');
     
     // Quick Actions
     const quickAddIncome = document.getElementById('quick-add-income');
@@ -71,6 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
             loadTransactions();
         } else if (tabId === 'tab-recurring') {
             loadRecurring();
+        } else if (tabId === 'tab-debts') {
+            loadDebts();
         }
     }
 
@@ -94,13 +99,20 @@ document.addEventListener('DOMContentLoaded', () => {
             setTodayDate('rec-date');
         } else if (modal === modalGoal) {
             formGoal.reset();
+        } else if (modal === modalDebt) {
+            formDebt.reset();
+            document.getElementById('debt-id').value = '';
+            document.getElementById('modal-debt-title').innerText = 'Registrar Deuda / Préstamo';
+            document.getElementById('debt-status').value = 'pending';
+            setTodayDate('debt-date');
         }
     }
 
     // Helper: set date input to today
     function setTodayDate(elementId) {
         const today = new Date().toISOString().split('T')[0];
-        document.getElementById(elementId).value = today;
+        const el = document.getElementById(elementId);
+        if (el) el.value = today;
     }
 
     // Set up close actions for all modals
@@ -128,6 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal(modalRec);
         setTodayDate('rec-date');
     });
+
+    if (btnAddDebt) {
+        btnAddDebt.addEventListener('click', () => {
+            openModal(modalDebt);
+            setTodayDate('debt-date');
+        });
+    }
 
     // Quick Actions
     quickAddIncome.addEventListener('click', () => {
@@ -223,6 +242,45 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('bar-goal-income').style.width = `${incPct}%`;
                 document.getElementById('bar-goal-savings').style.width = `${savPct}%`;
 
+                // Render Payment Notifications
+                const notifBox = document.getElementById('payments-notification-box');
+                const notifList = document.getElementById('notification-alerts-list');
+                
+                if (data.upcoming_alerts && data.upcoming_alerts.length > 0) {
+                    notifBox.style.display = 'block';
+                    notifList.innerHTML = '';
+                    
+                    data.upcoming_alerts.forEach(alert => {
+                        const div = document.createElement('div');
+                        let colorClass = 'alert-green-blue';
+                        let badgeText = '';
+
+                        // Cambios de color según urgencia
+                        if (alert.days_left <= 2) {
+                            colorClass = 'alert-red';
+                            badgeText = alert.days_left === 0 ? '¡Paga Hoy!' : `¡Faltan ${alert.days_left} días!`;
+                        } else if (alert.days_left <= 5) {
+                            colorClass = 'alert-yellow';
+                            badgeText = `Vence en ${alert.days_left} días`;
+                        } else {
+                            colorClass = 'alert-green-blue';
+                            badgeText = `Vence en ${alert.days_left} días`;
+                        }
+
+                        div.className = `alert-item ${colorClass}`;
+                        div.innerHTML = `
+                            <div class="alert-info-content">
+                                <span class="alert-service-name">${alert.name}</span>
+                                <span class="alert-service-details">Cobro de: <strong>${formatCurrency(alert.amount)}</strong> &bull; Vence el <strong>${alert.next_billing_date}</strong></span>
+                            </div>
+                            <span class="alert-status-badge">${badgeText}</span>
+                        `;
+                        notifList.appendChild(div);
+                    });
+                } else {
+                    notifBox.style.display = 'none';
+                }
+
                 // Daily Summary Status Text
                 const statusBox = document.getElementById('daily-status-text');
                 let statusMsg = `Esta semana (lunes a domingo) has acumulado **${formatCurrency(actualInc)}** en ingresos. `;
@@ -237,6 +295,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     statusMsg += 'No has definido una meta de ingresos para esta semana aún.';
                 }
                 
+                // Agregar recordatorio de deudas pendientes si las hay
+                const owedToMe = data.total_owed_to_me || 0;
+                const iOwe = data.total_i_owe || 0;
+                if (owedToMe > 0 || iOwe > 0) {
+                    statusMsg += `<br><br><i class="fa-solid fa-handshake"></i> <strong>Estatus de Deudas:</strong> `;
+                    if (owedToMe > 0) statusMsg += `Te deben un total de <strong>${formatCurrency(owedToMe)}</strong>. `;
+                    if (iOwe > 0) statusMsg += `Debes a otras personas un total de <strong>${formatCurrency(iOwe)}</strong>.`;
+                }
+
                 if (data.weekend_expenses > 0) {
                     statusMsg += `<br><br><span class="text-warning"><i class="fa-solid fa-triangle-exclamation"></i> Tus gastos acumulados los fines de semana ascienden a <strong>${formatCurrency(data.weekend_expenses)}</strong>. Vigila que no sobrepasen tus ahorros.</span>`;
                 }
@@ -252,7 +319,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateCategoryChart(categoriesData) {
         const ctx = document.getElementById('chart-categories').getContext('2d');
         
-        // Destroy existing chart to prevent rendering glitches
         if (categoryChart) {
             categoryChart.destroy();
         }
@@ -261,7 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = Object.values(categoriesData);
 
         if (labels.length === 0) {
-            // Draw dummy chart if no data
             categoryChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -282,15 +347,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Palette mapping for consistent category styling
         const categoryColors = {
-            'Trabajo / Inversión': '#1e40af', // Dark Blue
-            'Gasto Hormiga': '#ef4444',       // Red
-            'Suscripción': '#8b5cf6',        // Violet
-            'Servicio': '#f59e0b',            // Amber
-            'Fin de Semana': '#f43f5e',       // Rose
-            'Ahorro': '#10b981',              // Emerald
-            'Otros': '#64748b'                // Slate
+            'Trabajo / Inversión': '#1e40af',
+            'Gasto Hormiga': '#ef4444',
+            'Suscripción': '#8b5cf6',
+            'Servicio': '#f59e0b',
+            'Fin de Semana': '#f43f5e',
+            'Ahorro': '#10b981',
+            'Otros': '#64748b'
         };
 
         const bgColors = labels.map(label => categoryColors[label] || '#3b82f6');
@@ -388,7 +452,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.error('Error al cargar transacciones:', err));
     }
 
-    // Handle Filter Changes
     filterType.addEventListener('change', loadTransactions);
     filterCategory.addEventListener('change', loadTransactions);
     btnClearFilters.addEventListener('click', () => {
@@ -420,10 +483,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 data.forEach(service => {
-                    // Estimate monthly expense contributions
                     let monthlyContribution = service.amount;
                     if (service.frequency === 'Semanal') {
-                        monthlyContribution = service.amount * 4.33; // 4.33 weeks in a month
+                        monthlyContribution = service.amount * 4.33;
                     } else if (service.frequency === 'Anual') {
                         monthlyContribution = service.amount / 12;
                     }
@@ -432,7 +494,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const item = document.createElement('div');
                     item.className = 'recurring-item-card';
 
-                    // Pick Icon based on category
                     let iconClass = 'fa-solid fa-calendar';
                     let iconColorClass = '';
                     if (service.category === 'Suscripción') {
@@ -444,7 +505,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         iconClass = 'fa-solid fa-briefcase';
                     }
 
-                    // Format frequency tag class
                     const freqClass = `freq-${service.frequency.toLowerCase()}`;
 
                     item.innerHTML = `
@@ -472,6 +532,107 @@ document.addEventListener('DOMContentLoaded', () => {
                 monthlyTotalEl.innerText = formatCurrency(monthlySum);
             })
             .catch(err => console.error('Error al cargar servicios recurrentes:', err));
+    }
+
+
+    // --- DATA LOADING: DEBTS ---
+    function loadDebts() {
+        fetch('/api/debts')
+            .then(handleResponse)
+            .then(res => res.json())
+            .then(data => {
+                const lendList = document.getElementById('debts-lend-list');
+                const borrowList = document.getElementById('debts-borrow-list');
+                const kpiLend = document.getElementById('kpi-total-owed-to-me');
+                const kpiBorrow = document.getElementById('kpi-total-i-owe');
+                
+                lendList.innerHTML = '';
+                borrowList.innerHTML = '';
+
+                let totalLend = 0;
+                let totalBorrow = 0;
+
+                const lendRows = data.filter(d => d.type === 'lend');
+                const borrowRows = data.filter(d => d.type === 'borrow');
+
+                if (lendRows.length === 0) {
+                    lendList.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No tienes registros de personas que te deban dinero.</td></tr>';
+                } else {
+                    lendRows.forEach(d => {
+                        if (d.status === 'pending') {
+                            totalLend += d.amount;
+                        }
+                        
+                        const tr = document.createElement('tr');
+                        if (d.status === 'paid') {
+                            tr.style.opacity = '0.55';
+                            tr.style.textDecoration = 'line-through';
+                        }
+                        
+                        const badgeStatusClass = d.status === 'pending' ? 'badge-expense' : 'badge-income';
+                        const labelStatus = d.status === 'pending' ? 'Pendiente' : 'Pagado';
+                        const checkIcon = d.status === 'pending' ? 'fa-circle-check' : 'fa-clock';
+                        const checkTooltip = d.status === 'pending' ? 'Marcar como Pagado' : 'Marcar como Pendiente';
+
+                        tr.innerHTML = `
+                            <td style="font-weight: 600;">${d.person_name}</td>
+                            <td>${d.description || '-'}</td>
+                            <td>${d.due_date || 'Sin fecha'}</td>
+                            <td class="text-right" style="font-weight: 700; color: var(--success);">${formatCurrency(d.amount)}</td>
+                            <td class="text-center"><span class="badge ${badgeStatusClass}">${labelStatus}</span></td>
+                            <td class="text-center">
+                                <div class="action-buttons">
+                                    <button class="btn-icon btn-edit" onclick="toggleDebtStatus(${d.id}, '${d.status}')" title="${checkTooltip}"><i class="fa-solid ${checkIcon}"></i></button>
+                                    <button class="btn-icon btn-edit" onclick="editDebt(${d.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button class="btn-icon btn-delete" onclick="deleteDebt(${d.id})" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </td>
+                        `;
+                        lendList.appendChild(tr);
+                    });
+                }
+
+                if (borrowRows.length === 0) {
+                    borrowList.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No has registrado deudas pendientes.</td></tr>';
+                } else {
+                    borrowRows.forEach(d => {
+                        if (d.status === 'pending') {
+                            totalBorrow += d.amount;
+                        }
+                        
+                        const tr = document.createElement('tr');
+                        if (d.status === 'paid') {
+                            tr.style.opacity = '0.55';
+                            tr.style.textDecoration = 'line-through';
+                        }
+                        
+                        const badgeStatusClass = d.status === 'pending' ? 'badge-expense' : 'badge-income';
+                        const labelStatus = d.status === 'pending' ? 'Pendiente' : 'Pagado';
+                        const checkIcon = d.status === 'pending' ? 'fa-circle-check' : 'fa-clock';
+                        const checkTooltip = d.status === 'pending' ? 'Marcar como Pagado' : 'Marcar como Pendiente';
+
+                        tr.innerHTML = `
+                            <td style="font-weight: 600;">${d.person_name}</td>
+                            <td>${d.description || '-'}</td>
+                            <td>${d.due_date || 'Sin fecha'}</td>
+                            <td class="text-right" style="font-weight: 700; color: var(--danger);">${formatCurrency(d.amount)}</td>
+                            <td class="text-center"><span class="badge ${badgeStatusClass}">${labelStatus}</span></td>
+                            <td class="text-center">
+                                <div class="action-buttons">
+                                    <button class="btn-icon btn-edit" onclick="toggleDebtStatus(${d.id}, '${d.status}')" title="${checkTooltip}"><i class="fa-solid ${checkIcon}"></i></button>
+                                    <button class="btn-icon btn-edit" onclick="editDebt(${d.id})" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button class="btn-icon btn-delete" onclick="deleteDebt(${d.id})" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>
+                                </div>
+                            </td>
+                        `;
+                        borrowList.appendChild(tr);
+                    });
+                }
+
+                kpiLend.innerText = formatCurrency(totalLend);
+                kpiBorrow.innerText = formatCurrency(totalBorrow);
+            })
+            .catch(err => console.error('Error al cargar deudas:', err));
     }
 
 
@@ -582,6 +743,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // 4. Debt Form
+    formDebt.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const id = document.getElementById('debt-id').value;
+        const payload = {
+            person_name: document.getElementById('debt-person').value,
+            amount: document.getElementById('debt-amount').value,
+            type: document.getElementById('debt-type').value,
+            due_date: document.getElementById('debt-date').value,
+            description: document.getElementById('debt-description').value,
+            status: document.getElementById('debt-status').value
+        };
+
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/debts/${id}` : '/api/debts';
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(handleResponse)
+        .then(res => {
+            if (!res.ok) throw new Error('Error en el servidor al guardar la deuda.');
+            return res.json();
+        })
+        .then(data => {
+            closeModal(modalDebt);
+            loadDebts();
+        })
+        .catch(err => {
+            alert(err.message);
+        });
+    });
+
 
     // --- GLOBAL SCOPE ACTIONS FOR TABLE/GRID ACTIONS ---
     
@@ -658,6 +855,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadRecurring();
             })
             .catch(err => console.error('Error al eliminar servicio:', err));
+        }
+    };
+
+    // Toggle Debt Status (Pending <-> Paid)
+    window.toggleDebtStatus = function(id, currentStatus) {
+        const nextStatus = currentStatus === 'pending' ? 'paid' : 'pending';
+        fetch(`/api/debts/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: nextStatus })
+        })
+        .then(handleResponse)
+        .then(res => {
+            if (!res.ok) throw new Error('Error al actualizar estatus de deuda.');
+            return res.json();
+        })
+        .then(() => {
+            loadDebts();
+        })
+        .catch(err => console.error('Error al alternar estatus de deuda:', err));
+    };
+
+    // Edit Debt
+    window.editDebt = function(id) {
+        fetch('/api/debts')
+            .then(handleResponse)
+            .then(res => res.json())
+            .then(debts => {
+                const d = debts.find(item => item.id === id);
+                if (d) {
+                    document.getElementById('debt-id').value = d.id;
+                    document.getElementById('debt-person').value = d.person_name;
+                    document.getElementById('debt-amount').value = d.amount;
+                    document.getElementById('debt-type').value = d.type;
+                    document.getElementById('debt-date').value = d.due_date;
+                    document.getElementById('debt-description').value = d.description;
+                    document.getElementById('debt-status').value = d.status;
+
+                    document.getElementById('modal-debt-title').innerText = 'Editar Deuda / Préstamo';
+                    openModal(modalDebt);
+                }
+            })
+            .catch(err => console.error('Error al obtener deudas:', err));
+    };
+
+    // Delete Debt
+    window.deleteDebt = function(id) {
+        if (confirm('¿Estás seguro de que deseas eliminar este registro de deuda?')) {
+            fetch(`/api/debts/${id}`, {
+                method: 'DELETE'
+            })
+            .then(handleResponse)
+            .then(res => res.json())
+            .then(() => {
+                loadDebts();
+            })
+            .catch(err => console.error('Error al eliminar deuda:', err));
         }
     };
 
