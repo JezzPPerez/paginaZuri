@@ -1101,9 +1101,13 @@ body {
 
 .debts-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 1.5rem;
     align-items: start;
+}
+
+.table-responsive .data-table {
+    min-width: 550px;
 }
 
 @media (max-width: 1024px) {
@@ -1113,6 +1117,10 @@ body {
 }
 
 @media (max-width: 768px) {
+    .table-responsive .data-table {
+        min-width: auto;
+    }
+
     /* Tablas responsivas para celular (formato tarjeta vertical) */
     .data-table, 
     .data-table thead, 
