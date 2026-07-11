@@ -475,6 +475,20 @@ def get_summary():
 # Inicializar Base de Datos
 with app.app_context():
     db.create_all()
+    try:
+        if User.query.count() == 0:
+            user_jezzito = User(username='jezzito')
+            user_jezzito.set_password('jezzito123')
+            
+            user_rabanito = User(username='Rabanito')
+            user_rabanito.set_password('rabanito123')
+            
+            db.session.add(user_jezzito)
+            db.session.add(user_rabanito)
+            db.session.commit()
+            print("Usuarios por defecto creados en la base de datos.")
+    except Exception as e:
+        print("Error al inicializar usuarios por defecto:", e)
 
 if __name__ == '__main__':
     # Escuchar en 0.0.0.0 para acceso en red local (celular)
